@@ -1,0 +1,298 @@
+================================================================================
+OPPE 1 EXAM - TRAIN STOPPAGE ANALYSIS
+Complete Step-by-Step GCS Execution Commands
+Copy-Paste Ready for Video Demonstration
+Date: 2026-04-04 | Time: 14:30-16:30 IST
+Student: Roll 21f2001203
+================================================================================
+
+⏱️ TOTAL TIME: ~15-20 minutes
+(5 min setup + 5 min Dataproc job + 2 min Cloud Function + 8 min narration)
+
+================================================================================
+SECTION 1: SETUP & VERIFICATION (2 minutes)
+================================================================================
+
+# [COMMAND 1] Set Project ID
+gcloud config set project project-399f087e-fef4-4831-b4e
+
+# [COMMAND 2] Verify Project
+gcloud config get-value project
+
+# [COMMAND 3] List Bucket Structure
+gsutil ls gs://iitm-ibd-oppe1-21f2001203/
+
+# [COMMAND 4] Verify Dataset in /data/ folder
+gsutil ls gs://iitm-ibd-oppe1-21f2001203/data/
+
+# [COMMAND 5] Verify Scripts folder exists
+gsutil ls gs://iitm-ibd-oppe1-21f2001203/scripts/
+
+# [COMMAND 6] Verify Output folder exists
+gsutil ls gs://iitm-ibd-oppe1-21f2001203/output/
+
+================================================================================
+SECTION 2: UPLOAD PYSPARK SCRIPT (1 minute)
+================================================================================
+
+# [COMMAND 7] Upload PySpark script to scripts folder
+gsutil cp train_analysis_section_a_b.py gs://iitm-ibd-oppe1-21f2001203/scripts/
+
+# [COMMAND 8] Verify upload
+gsutil ls gs://iitm-ibd-oppe1-21f2001203/scripts/
+
+================================================================================
+SECTION 3: CREATE DATAPROC CLUSTER (5 minutes)
+================================================================================
+
+# [COMMAND 9] Create single-node Dataproc cluster
+# This takes 3-5 minutes. While waiting, you can narrate the architecture.
+gcloud dataproc clusters create oppe1-cluster \
+    --region=us-central1 \
+    --single-node \
+    --master-machine-type=n1-standard-2 \
+    --image-version=2.2-debian12
+
+# [COMMAND 10] Verify cluster is RUNNING
+# Run this while waiting for cluster creation to complete
+gcloud dataproc clusters list --region=us-central1
+
+# [COMMAND 11] Get detailed cluster info
+gcloud dataproc clusters describe oppe1-cluster --region=us-central1
+
+================================================================================
+SECTION 4: SUBMIT PYSPARK JOB (Section A + B) (3-5 minutes)
+================================================================================
+
+# [COMMAND 12] Submit PySpark job to Dataproc
+# This reads from /data/, calculates stop durations, and writes to /output/
+gcloud dataproc jobs submit pyspark \
+    gs://iitm-ibd-oppe1-21f2001203/scripts/train_analysis_section_a_b.py \
+    --cluster=oppe1-cluster \
+    --region=us-central1 \
+    -- \
+    --input_path=gs://iitm-ibd-oppe1-21f2001203/data/Train_details_22122017.csv \
+    --output_path=gs://iitm-ibd-oppe1-21f2001203/output/train_analysis_results.csv
+
+# [EXPECTED OUTPUT WHILE RUNNING]
+# You should see:
+# - "Submitting job..."
+# - "Job [job-xxx] submitted successfully."
+# - Then it starts processing...
+# - Wait 3-5 minutes for completion
+
+# [COMMAND 13] Check job status while it's running
+# Run this in another Cloud Shell tab to monitor progress
+gcloud dataproc jobs list --region=us-central1
+
+# [COMMAND 14] Get detailed job logs
+# Run this to see what the job is doing
+gcloud dataproc jobs describe job-xxx --region=us-central1
+
+================================================================================
+SECTION 5: VERIFY PYSPARK OUTPUT (1 minute)
+================================================================================
+
+# [COMMAND 15] List output files in GCS
+gsutil ls gs://iitm-ibd-oppe1-21f2001203/output/
+
+# [COMMAND 16] View the CSV output (first 20 rows)
+gsutil cat gs://iitm-ibd-oppe1-21f2001203/output/train_analysis_results.csv/part-*.csv | head -20
+
+# [COMMAND 17] Count total rows in output
+gsutil cat gs://iitm-ibd-oppe1-21f2001203/output/train_analysis_results.csv/part-*.csv | wc -l
+
+# [COMMAND 18] Download output locally for reference
+gsutil cp gs://iitm-ibd-oppe1-21f2001203/output/train_analysis_results.csv/part-*.csv train_results.csv
+
+================================================================================
+SECTION 6: DEPLOY CLOUD FUNCTION (Section C) (2-3 minutes)
+================================================================================
+
+# [COMMAND 19] Create temporary directory for Cloud Function
+mkdir -p ~/cf && cd ~/cf
+
+# [COMMAND 20] Create main.py (Cloud Function code)
+cat > main.py << 'EOFCF'
+import logging
+import csv
+from io import StringIO
+from google.cloud import storage
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def process_results(event, context):
+    bucket_name = event['bucket']
+    file_name = event['name']
+    logger.info(f"Function triggered by upload of '{file_name}'")
+
+    try:
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(bucket_name)
+        blob = bucket.blob(file_name)
+        csv_content = blob.download_as_text(encoding='utf-8')
+
+        csv_reader = csv.DictReader(StringIO(csv_content))
+        max_avg = -1
+        max_station = None
+
+        for row in csv_reader:
+            try:
+                avg = float(row.get('avg_stop_duration', 0))
+                if avg > max_avg:
+                    max_avg = avg
+                    max_station = row.get('Station Name', 'Unknown')
+            except:
+                continue
+
+        logger.info("="*80)
+        logger.info("SECTION C: CLOUD FUNCTION RESULTS")
+        logger.info("="*80)
+        logger.info(f"Station with HIGHEST AVERAGE STOP DURATION:")
+        logger.info(f"  Station Name: {max_station}")
+        logger.info(f"  Avg Stop Duration: {max_avg} minutes")
+        logger.info("="*80)
+
+        return f"Success: {max_station}"
+    except Exception as e:
+        logger.error(f"Error: {str(e)}")
+        raise
+EOFCF
+
+# [COMMAND 21] Create requirements.txt
+cat > requirements.txt << 'EOFREQ'
+google-cloud-storage==2.14.0
+EOFREQ
+
+# [COMMAND 22] Verify files were created
+ls -lah
+
+# [COMMAND 23] Deploy Cloud Function
+# This takes 1-2 minutes to deploy
+gcloud functions deploy process_results \
+    --no-gen2 \
+    --runtime python311 \
+    --trigger-resource iitm-ibd-oppe1-21f2001203 \
+    --trigger-event google.storage.object.finalize \
+    --entry-point process_results \
+    --region us-central1 \
+    --memory 256MB \
+    --timeout 60s
+
+# [EXPECTED OUTPUT]
+# You should see:
+# - "Deploying function..."
+# - "Deploy of function process_results completed successfully."
+
+# [COMMAND 24] Verify function is deployed (status: ACTIVE)
+gcloud functions describe process_results --region=us-central1
+
+================================================================================
+SECTION 7: TEST CLOUD FUNCTION (1 minute)
+================================================================================
+
+# [COMMAND 25] Go back to home directory
+cd ~
+
+# [COMMAND 26] Trigger Cloud Function by uploading a test file
+echo "test" | gsutil cp - gs://iitm-ibd-oppe1-21f2001203/test_trigger_$(date +%s).txt
+
+# [COMMAND 27] Wait 15 seconds for function to execute
+# Then view the logs...
+
+# [COMMAND 28] Read Cloud Function logs (will show "Station with HIGHEST AVERAGE STOP DURATION")
+gcloud functions logs read process_results --region=us-central1 --limit 50
+
+# [EXPECTED OUTPUT IN LOGS]
+# ================================================================================
+# SECTION C: CLOUD FUNCTION RESULTS
+# ================================================================================
+# Station with HIGHEST AVERAGE STOP DURATION:
+#   Station Name: [STATION_NAME]
+#   Avg Stop Duration: [NUMBER] minutes
+# ================================================================================
+
+================================================================================
+SECTION 8: CAPTURE SCREENSHOTS FOR SUBMISSION (During narration)
+================================================================================
+
+# [SCREENSHOT 1] GCS Bucket Structure - Run this and screenshot output:
+gsutil ls -r gs://iitm-ibd-oppe1-21f2001203/
+
+# [SCREENSHOT 2] Dataproc Cluster - Run this and screenshot output:
+gcloud dataproc clusters list --region=us-central1
+
+# [SCREENSHOT 3] Output CSV - Run this and screenshot output:
+gsutil cat gs://iitm-ibd-oppe1-21f2001203/output/train_analysis_results.csv/part-*.csv | head -15
+
+# [SCREENSHOT 4] Cloud Function Logs - Run this and screenshot output:
+gcloud functions logs read process_results --region=us-central1 --limit 30
+
+================================================================================
+SECTION 9: CLEANUP (After Exam - DO NOT RUN DURING EXAM)
+================================================================================
+
+# [COMMAND 29] Delete Dataproc cluster (to stop billing)
+gcloud dataproc clusters delete oppe1-cluster --region=us-central1 --quiet
+
+# [COMMAND 30] Delete Cloud Function (optional)
+gcloud functions delete process_results --region=us-central1 --quiet
+
+================================================================================
+VIDEO NARRATION TALKING POINTS (While commands run)
+================================================================================
+
+WHILE CLUSTER IS BEING CREATED (3-5 min wait):
+- "I'm creating a Dataproc cluster in us-central1 region"
+- "This cluster will run our Apache Spark job for analyzing train stoppage data"
+- "Once ready, it will read train details from GCS and compute statistics"
+
+WHILE PYSPARK JOB IS RUNNING (3-5 min wait):
+- "Our PySpark job is now reading the dataset from GCS"
+- "It's calculating stop duration for each train at each station"
+- "For Section A, we compute min, max, average, and 90th percentile stop durations"
+- "For Section B, we identify anomalous stations where max > 3× average"
+- "For Section B, we also find the maximum number of trains arriving in a 2-hour window at the top station"
+
+WHEN SHOWING OUTPUTS:
+- "As you can see, STATION_NAME has the highest average stop duration"
+- "This makes sense because it's a major junction where trains spend more time"
+- "The anomalous stations have unusual patterns that deserve attention"
+- "Our Cloud Function automatically detects and logs this information"
+
+================================================================================
+IMPORTANT REMINDERS
+================================================================================
+
+✅ MUST INCLUDE AUDIO in video (no silent videos accepted)
+✅ Show LIVE execution (not just screenshots)
+✅ Explain what each command does before running it
+✅ Watch for error messages and fix them
+✅ Keep Cloud Shell terminal visible throughout
+✅ Mention your roll number: 21f2001203
+✅ State the problem: "Analyzing train stoppage patterns using PySpark on GCP"
+✅ Reference the 3 sections: A (statistics), B (load analysis), C (automation)
+
+================================================================================
+TIMING GUIDE
+================================================================================
+
+Total Duration: 14:30 - 16:30 IST (2 hours)
+
+14:30 - 14:35 (5 min) : Setup + Upload script + Start cluster creation
+14:35 - 14:40 (5 min) : Explain architecture while cluster is creating
+14:40 - 14:50 (10 min): Submit PySpark job + Explain code
+14:50 - 14:55 (5 min) : Job completes, verify output
+14:55 - 15:05 (10 min): Deploy Cloud Function + Explain trigger logic
+15:05 - 15:15 (10 min): Test Cloud Function + Show logs
+15:15 - 16:20 (65 min): Record narration, capture screenshots, finalize recording
+16:20 - 16:30 (10 min): Upload files, submit form
+
+================================================================================
+END OF EXECUTION GUIDE
+================================================================================
+
+Good luck! 🚀
+Exam: 2026-04-04, 14:30-16:30 IST
+Roll: 21f2001203

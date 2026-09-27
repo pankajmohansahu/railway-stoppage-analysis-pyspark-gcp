@@ -1,0 +1,10 @@
+Hello World
+This is a short line.
+This is a medium length line for testing the Cloud Function.
+Google Cloud Platform provides various services for big data analytics and machine learning applications.
+Data Science is an interdisciplinary field that uses scientific methods, processes, algorithms and systems to extract knowledge from data.
+Cloud Computing revolutionizes how we store, process, and analyze data at scale.
+Big Data
+The longest line in this file should be identified by the Cloud Function and saved in the result file.
+Testing multiple lines with same length: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+Testing multiple lines with same length: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB

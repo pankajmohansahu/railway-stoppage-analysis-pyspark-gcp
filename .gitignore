@@ -1,0 +1,16 @@
+# Submission archive and its extracted duplicate
+*.zip
+21F2001203_oppe_1_JAN_2025_IBD/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# Local tooling / OS
+.claude/
+.vscode/
+.DS_Store
+Thumbs.db

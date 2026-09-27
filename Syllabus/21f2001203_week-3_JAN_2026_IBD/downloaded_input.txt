@@ -1,0 +1,12 @@
+This is a short line.
+This is a medium length line with some more text here.
+This is another short line that is slightly longer than the first.
+Here we have a very long line that contains significantly more text than the previous lines and should be one of the longest lines in this entire file for testing purposes.
+Another medium sized line.
+Short.
+This line has multiple words and punctuation marks! It's moderately long.
+Here is another very long line that matches the length of the previous very long line, containing enough characters to test the case where multiple lines share the maximum length in the file.
+Medium length content goes here.
+Final short line.
+This is the penultimate line with reasonable length for variety.
+And this is the last line of the sample file.

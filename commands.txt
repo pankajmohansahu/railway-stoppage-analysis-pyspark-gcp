@@ -1,0 +1,41 @@
+gcloud config set project project-399f087e-fef4-4831-b4e
+gcloud config get-value project
+gsutil ls gs://iitm-ibd-oppe1-21f2001203/
+
+
+STEP 3: Upload PySpark Script to GCS 📤
+gcloud config set project project-399f087e-fef4-4831-b4e
+gcloud config get-value project
+gsutil ls gs://iitm-ibd-oppe1-21f2001203/
+
+
+STEP 4: Create Dataproc Cluster 🚀
+gcloud dataproc clusters create oppe1-cluster \
+    --region=us-central1 \
+    --single-node \
+    --master-machine-type=n1-standard-2 \
+    --image-version=2.2-debian12
+
+
+STEP 5: Submit PySpark Job (Section A + B) ⚙️
+gcloud dataproc jobs submit pyspark \
+    gs://iitm-ibd-oppe1-21f2001203/scripts/train_analysis_section_a_b.py \
+    --cluster=oppe1-cluster \
+    --region=us-central1 \
+    -- \
+    --input_path=gs://iitm-ibd-oppe1-21f2001203/input/Train_details_22122017.csv \
+    --output_path=gs://iitm-ibd-oppe1-21f2001203/output/train_analysis_results.csv
+
+
+Wait for it to complete. You'll see:
+✓ Results written to: gs://iitm-ibd-oppe1-21f2001203/output/train_analysis_results.csv
+
+
+✓ Results written to: gs://iitm-ibd-oppe1-21f2001203/output/train_analysis_results.csv
+mkdir -p ~/cf && cd ~/cf
+gsutil cp gs://iitm-ibd-oppe1-21f2001203/scripts/cloud_function.py main.py 2>/dev/null || echo "Downloading from local..."
+
+
+STEP 10: Cleanup (After Exam) 🧹
+gcloud dataproc clusters delete oppe1-cluster --region=us-central1 --quiet
+gcloud functions delete process_results --region=us-central1 --quiet
